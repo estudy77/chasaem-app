@@ -1,0 +1,495 @@
+<script>
+(function () {
+  "use strict";
+
+  var LAST_STUDENT_KEY = "driving-skill-tracker-last-student";
+
+  // 항목 순서/이름은 Code.gs의 ITEMS 배열과 반드시 일치해야 합니다.
+  // (수업 이력 표의 열 제목을 서버 응답을 기다리지 않고 바로 그리기 위해 클라이언트에도 둡니다.)
+  var ITEM_META = [
+    { id: "basic",      label: "기본조작",    group: "course" },
+    { id: "startstop",  label: "출발·정지",   group: "course" },
+    { id: "corner",     label: "코너링",      group: "course" },
+    { id: "tpark",      label: "T자 주차",    group: "course" },
+    { id: "reverse",    label: "후진",        group: "course" },
+    { id: "parking",    label: "주차",        group: "course" },
+    { id: "lanechange", label: "차선변경",    group: "road" },
+    { id: "signal",     label: "신호·교차로", group: "road" },
+    { id: "roaddrive",  label: "도로주행",    group: "road" },
+    { id: "hazard",     label: "위험대처",    group: "road" }
+  ];
+
+  var currentStudentId = null;
+  var currentSummary = null;
+  var sessionInputs = {};
+
+  var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  var panels = { roster: document.getElementById("tabRoster"), sessions: document.getElementById("tabSessions") };
+
+  var rosterBody = document.getElementById("rosterBody");
+  var newStudentName = document.getElementById("newStudentName");
+  var newStudentContact = document.getElementById("newStudentContact");
+  var newStudentDate = document.getElementById("newStudentDate");
+  var addStudentBtn = document.getElementById("addStudentBtn");
+
+  var studentSelect = document.getElementById("studentSelect");
+  var courseRowsEl = document.getElementById("courseRows");
+  var roadRowsEl = document.getElementById("roadRows");
+  var sessionDateEl = document.getElementById("sessionDate");
+  var saveSessionBtn = document.getElementById("saveSessionBtn");
+  var deleteLastBtn = document.getElementById("deleteLastBtn");
+  var historyHeadEl = document.getElementById("historyHead");
+  var historyBodyEl = document.getElementById("historyBody");
+  var statusNote = document.getElementById("statusNote");
+
+  /* ---------------------------------------------------------------- */
+  /* 공용 유틸                                                          */
+  /* ---------------------------------------------------------------- */
+
+  // 차샘 운전교실 점수 기준: 0~59 집중 연습 / 60~74 연습 필요 / 75~89 가능 / 90~100 능숙
+  // (Code.gs의 levelFromScore_와 반드시 같은 경계값을 써야 합니다.)
+  function tierClass(v) {
+    if (v >= 90) return "tier-master";
+    if (v >= 75) return "tier-ok";
+    if (v >= 60) return "tier-practice";
+    return "tier-focus";
+  }
+  function tierLabel(v) {
+    if (v >= 90) return "능숙";
+    if (v >= 75) return "가능";
+    if (v >= 60) return "연습 필요";
+    return "집중 연습";
+  }
+  function scoreChip(v) {
+    return '<span class="score-chip ' + tierClass(v) + '">' + v + "</span>";
+  }
+
+  function clampScore(raw) {
+    var v = Math.round(Number(raw));
+    if (isNaN(v)) v = 0;
+    return Math.max(0, Math.min(100, v));
+  }
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function nowLabel() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function setStatus(text, isError) {
+    statusNote.textContent = text;
+    statusNote.style.color = isError ? "var(--bad)" : "var(--ink-muted)";
+  }
+
+  function onError(err) {
+    console.error(err);
+    setStatus("오류: " + (err && err.message ? err.message : "저장/불러오기에 실패했어요."), true);
+  }
+
+  function deltaHtml(delta, hasEnoughHistory) {
+    if (!hasEnoughHistory || delta === null || delta === undefined) return '<span class="dtxt-flat">첫 평가</span>';
+    if (delta > 0) return '<span class="dtxt-up">▲ +' + delta + '</span>';
+    if (delta < 0) return '<span class="dtxt-down">▼ ' + delta + '</span>';
+    return '<span class="dtxt-flat">변화 없음</span>';
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 탭 전환                                                            */
+  /* ---------------------------------------------------------------- */
+
+  function switchTab(name) {
+    tabButtons.forEach(function (b) { b.classList.toggle("is-active", b.dataset.tab === name); });
+    Object.keys(panels).forEach(function (key) { panels[key].hidden = key !== name; });
+  }
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () { switchTab(btn.dataset.tab); });
+  });
+
+  /* ---------------------------------------------------------------- */
+  /* 탭 1: 수강생 관리                                                   */
+  /* ---------------------------------------------------------------- */
+
+  function refreshRoster() {
+    google.script.run
+      .withSuccessHandler(renderRoster)
+      .withFailureHandler(onError)
+      .getStudentRoster();
+  }
+
+  function renderRoster(rows) {
+    rosterBody.innerHTML = "";
+    if (!rows.length) {
+      rosterBody.innerHTML = '<tr><td colspan="10" class="empty-row">등록된 수강생이 없어요. 위에서 추가해 보세요.</td></tr>';
+      return;
+    }
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+
+      var tdName = document.createElement("td");
+      tdName.className = "name";
+      tdName.textContent = r.name;
+      tr.appendChild(tdName);
+
+      tr.appendChild(makeEditableCell(r.id, "contact", r.contact, "text", "연락처"));
+      tr.appendChild(makeEditableCell(r.id, "registeredDate", r.registeredDate, "date"));
+
+      var tdCount = document.createElement("td");
+      tdCount.textContent = r.sessionCount + "회";
+      tr.appendChild(tdCount);
+
+      var tdRecent = document.createElement("td");
+      tdRecent.textContent = r.recentScore == null ? "-" : r.recentScore + "점";
+      tr.appendChild(tdRecent);
+
+      var tdPrev = document.createElement("td");
+      tdPrev.textContent = r.prevScore == null ? "-" : r.prevScore + "점";
+      tr.appendChild(tdPrev);
+
+      var tdDelta = document.createElement("td");
+      tdDelta.innerHTML = deltaHtml(r.delta, r.sessionCount >= 2);
+      tr.appendChild(tdDelta);
+
+      var tdLevel = document.createElement("td");
+      tdLevel.textContent = r.level;
+      tr.appendChild(tdLevel);
+
+      tr.appendChild(makeEditableCell(r.id, "memo", r.memo, "text", "메모", true));
+
+      var tdLink = document.createElement("td");
+      var linkBtn = document.createElement("button");
+      linkBtn.type = "button";
+      linkBtn.className = "roster-link";
+      linkBtn.textContent = "회차별 평가 →";
+      linkBtn.addEventListener("click", function () {
+        switchTab("sessions");
+        studentSelect.value = r.id;
+        loadStudent(r.id);
+      });
+      tdLink.appendChild(linkBtn);
+      tr.appendChild(tdLink);
+
+      rosterBody.appendChild(tr);
+    });
+  }
+
+  function makeEditableCell(studentId, field, value, type, placeholder, isMemo) {
+    var td = document.createElement("td");
+    var input = document.createElement("input");
+    input.type = type;
+    input.className = "cell-input" + (isMemo ? " cell-memo" : "");
+    input.value = value || "";
+    if (placeholder) input.placeholder = placeholder;
+    input.addEventListener("change", function () {
+      var patch = {};
+      patch[field] = input.value;
+      google.script.run
+        .withSuccessHandler(function () { setStatus("저장됨 · " + nowLabel()); })
+        .withFailureHandler(onError)
+        .updateStudentInfo(studentId, patch);
+    });
+    td.appendChild(input);
+    return td;
+  }
+
+  addStudentBtn.addEventListener("click", function () {
+    var name = newStudentName.value.trim();
+    if (!name) { newStudentName.focus(); return; }
+    addStudentBtn.disabled = true;
+    setStatus("수강생 등록 중…");
+    google.script.run
+      .withSuccessHandler(function () {
+        addStudentBtn.disabled = false;
+        newStudentName.value = "";
+        newStudentContact.value = "";
+        newStudentDate.value = todayStr();
+        setStatus("등록됨 · " + nowLabel());
+        refreshRoster();
+        refreshStudentSelect();
+      })
+      .withFailureHandler(function (err) { addStudentBtn.disabled = false; onError(err); })
+      .addStudent({ name: name, contact: newStudentContact.value.trim(), registeredDate: newStudentDate.value });
+  });
+  newStudentName.addEventListener("keydown", function (e) { if (e.key === "Enter") addStudentBtn.click(); });
+
+  /* ---------------------------------------------------------------- */
+  /* 탭 2: 회차별 평가                                                   */
+  /* ---------------------------------------------------------------- */
+
+  function refreshStudentSelect() {
+    google.script.run
+      .withSuccessHandler(function (students) {
+        var keep = studentSelect.value;
+        var remembered = null;
+        try { remembered = localStorage.getItem(LAST_STUDENT_KEY); } catch (e) {}
+
+        studentSelect.innerHTML = "";
+        students.forEach(function (s) {
+          var opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name;
+          studentSelect.appendChild(opt);
+        });
+
+        var target = null;
+        if (students.some(function (s) { return s.id === keep; })) target = keep;
+        else if (students.some(function (s) { return s.id === remembered; })) target = remembered;
+        else if (students.length) target = students[0].id;
+
+        if (target) {
+          studentSelect.value = target;
+          loadStudent(target);
+        } else {
+          setStatus("등록된 수강생이 없어요. 수강생 관리 탭에서 먼저 추가해 주세요.");
+        }
+      })
+      .withFailureHandler(onError)
+      .getStudents();
+  }
+
+  studentSelect.addEventListener("change", function () { loadStudent(studentSelect.value); });
+
+  function loadStudent(studentId) {
+    currentStudentId = studentId;
+    try { localStorage.setItem(LAST_STUDENT_KEY, studentId); } catch (e) {}
+    setStatus("불러오는 중…");
+    google.script.run.withSuccessHandler(onSummary).withFailureHandler(onError).getStudentSummary(studentId);
+    google.script.run.withSuccessHandler(onSessions).withFailureHandler(onError).getSessions(studentId);
+  }
+
+  function onSummary(summary) {
+    currentSummary = summary;
+
+    document.getElementById("reportAvg").textContent = summary.hasSessions ? summary.overall + "점" : "-";
+    document.getElementById("reportPrev").textContent = summary.prevScore == null ? "-" : summary.prevScore + "점";
+    document.getElementById("reportLevel").textContent = summary.level;
+    document.getElementById("reportSessionCount").textContent = summary.sessionCount;
+    document.getElementById("nextSessionNo").textContent = summary.nextSessionNo;
+
+    var deltaEl = document.getElementById("reportDelta");
+    if (summary.delta === null || summary.delta === undefined) {
+      deltaEl.textContent = "첫 평가";
+      deltaEl.className = "field-value delta-flat";
+    } else if (summary.delta > 0) {
+      deltaEl.textContent = "▲ +" + summary.delta + "점";
+      deltaEl.className = "field-value delta-up";
+    } else if (summary.delta < 0) {
+      deltaEl.textContent = "▼ " + summary.delta + "점";
+      deltaEl.className = "field-value delta-down";
+    } else {
+      deltaEl.textContent = "변화 없음";
+      deltaEl.className = "field-value delta-flat";
+    }
+
+    renderReportTable(summary.items, summary.hasSessions);
+    renderFocus(summary);
+    renderSessionForm(summary.items);
+    setStatus("마지막 갱신: " + nowLabel());
+  }
+
+  function renderReportTable(items, hasSessions) {
+    var tbody = document.getElementById("reportTableBody");
+    tbody.innerHTML = "";
+    items.forEach(function (item) {
+      var tr = document.createElement("tr");
+      if (!hasSessions) {
+        tr.innerHTML = "<td>" + item.label + '</td><td class="muted">-</td><td class="muted">-</td>';
+      } else {
+        tr.innerHTML =
+          "<td>" + item.label + "</td>" +
+          '<td class="score">' + scoreChip(item.value) + "</td>" +
+          "<td>" + tierLabel(item.value) + "</td>";
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderFocus(summary) {
+    var focusBody = document.getElementById("focusBody");
+    if (!summary.hasSessions) {
+      focusBody.innerHTML = "<p>아직 입력된 회차가 없어요. 아래 '새 회차 입력'에서 첫 평가를 남겨 보세요.</p>";
+      return;
+    }
+    if (!summary.needsWork.length) {
+      focusBody.innerHTML = "<p>가장 최근 회차 기준, 시도한 항목이 모두 능숙 단계예요.</p>";
+      return;
+    }
+    var labels = ["우선 연습", "다음 연습", "세 번째 연습"];
+    var html = "<ol>";
+    summary.needsWork.forEach(function (item, idx) {
+      html += "<li>" + labels[idx] + ": <b>" + item.label + "</b> (" + item.value.toFixed(1) + "점)</li>";
+    });
+    html += "</ol>";
+    focusBody.innerHTML = html;
+  }
+
+  /* ------------------------- 새 회차 입력 폼 -------------------------- */
+
+  function renderSessionForm(items) {
+    courseRowsEl.innerHTML = "";
+    roadRowsEl.innerHTML = "";
+    sessionInputs = {};
+    items.forEach(function (item) {
+      var row = buildSessionRow(item);
+      (item.group === "course" ? courseRowsEl : roadRowsEl).appendChild(row);
+    });
+    updatePreviewTotal();
+  }
+
+  function buildSessionRow(item) {
+    var row = document.createElement("div");
+    row.className = "row";
+
+    var label = document.createElement("div");
+    label.className = "row-label";
+    label.textContent = item.label;
+
+    var track = document.createElement("div");
+    track.className = "bar-track";
+    var fill = document.createElement("div");
+    fill.className = "bar-fill";
+    track.appendChild(fill);
+
+    var input = document.createElement("input");
+    input.type = "number";
+    input.className = "score-input";
+    input.min = "0";
+    input.max = "100";
+    input.step = "5";
+    input.value = item.value;
+    input.setAttribute("aria-label", item.label + " 점수 입력");
+
+    function paint(v) {
+      var tier = tierClass(v);
+      fill.style.width = Math.max(0, Math.min(100, v)) + "%";
+      fill.className = "bar-fill " + tier;
+      input.className = "score-input " + tier;
+    }
+    paint(item.value);
+
+    input.addEventListener("input", function () {
+      paint(clampScore(input.value));
+      updatePreviewTotal();
+    });
+    input.addEventListener("blur", function () {
+      input.value = clampScore(input.value);
+      updatePreviewTotal();
+    });
+
+    row.appendChild(label);
+    row.appendChild(track);
+    row.appendChild(input);
+    sessionInputs[item.id] = input;
+    return row;
+  }
+
+  function updatePreviewTotal() {
+    var ids = Object.keys(sessionInputs);
+    if (!ids.length) { document.getElementById("previewTotal").textContent = "0"; return; }
+    var sum = 0;
+    ids.forEach(function (id) { sum += clampScore(sessionInputs[id].value); });
+    document.getElementById("previewTotal").textContent = Math.round(sum / ids.length);
+  }
+
+  saveSessionBtn.addEventListener("click", function () {
+    if (!currentStudentId) return;
+    var itemScores = {};
+    Object.keys(sessionInputs).forEach(function (id) { itemScores[id] = clampScore(sessionInputs[id].value); });
+
+    saveSessionBtn.disabled = true;
+    setStatus("저장 중…");
+    google.script.run
+      .withSuccessHandler(function (result) {
+        saveSessionBtn.disabled = false;
+        onSummary(result.summary);
+        onSessions(result.sessions);
+        refreshRoster();
+        setStatus("회차가 저장됐어요 · " + nowLabel());
+      })
+      .withFailureHandler(function (err) { saveSessionBtn.disabled = false; onError(err); })
+      .addSession(currentStudentId, sessionDateEl.value || todayStr(), itemScores);
+  });
+
+  deleteLastBtn.addEventListener("click", function () {
+    if (!currentStudentId || !currentSummary || !currentSummary.hasSessions) return;
+    var ok = window.confirm(
+      currentSummary.student.name + " 님의 " + currentSummary.sessionCount + "회차 기록을 삭제할까요? 이전 회차는 그대로 남습니다."
+    );
+    if (!ok) return;
+
+    deleteLastBtn.disabled = true;
+    setStatus("삭제 중…");
+    google.script.run
+      .withSuccessHandler(function (result) {
+        deleteLastBtn.disabled = false;
+        onSummary(result.summary);
+        onSessions(result.sessions);
+        refreshRoster();
+        setStatus("삭제했어요 · " + nowLabel());
+      })
+      .withFailureHandler(function (err) { deleteLastBtn.disabled = false; onError(err); })
+      .deleteLastSession(currentStudentId);
+  });
+
+  /* ------------------------------ 수업 이력 --------------------------- */
+
+  function renderHistoryHeader() {
+    var tr = document.createElement("tr");
+    ["수업일", "회차"].concat(ITEM_META.map(function (i) { return i.label; }), ["종합점수", "이전점수"])
+      .forEach(function (h) {
+        var th = document.createElement("th");
+        th.textContent = h;
+        tr.appendChild(th);
+      });
+    historyHeadEl.innerHTML = "";
+    historyHeadEl.appendChild(tr);
+  }
+
+  function onSessions(sessions) {
+    historyBodyEl.innerHTML = "";
+    if (!sessions.length) {
+      historyBodyEl.innerHTML = '<tr><td class="empty-row">아직 기록이 없어요.</td></tr>';
+      return;
+    }
+    sessions.forEach(function (s) {
+      var tr = document.createElement("tr");
+
+      var plainCells = [s.date, s.sessionNo + "회"];
+      plainCells.forEach(function (v) {
+        var td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+
+      ITEM_META.forEach(function (meta) {
+        var td = document.createElement("td");
+        td.innerHTML = scoreChip(s.items[meta.id]);
+        tr.appendChild(td);
+      });
+
+      var tdTotal = document.createElement("td");
+      tdTotal.innerHTML = scoreChip(s.total);
+      tr.appendChild(tdTotal);
+
+      var tdPrev = document.createElement("td");
+      tdPrev.textContent = s.prevScore == null ? "-" : s.prevScore + "점";
+      tr.appendChild(tdPrev);
+
+      historyBodyEl.appendChild(tr);
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 초기화                                                             */
+  /* ---------------------------------------------------------------- */
+
+  newStudentDate.value = todayStr();
+  sessionDateEl.value = todayStr();
+  renderHistoryHeader();
+  refreshRoster();
+  refreshStudentSelect();
+})();
+</script>
