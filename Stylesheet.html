@@ -577,10 +577,62 @@
   button.reset:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   button.reset:disabled{ opacity:0.6; cursor:default; }
 
-  @media (max-width:520px){
-    .row{ grid-template-columns:76px 1fr 52px; gap:10px; }
-    .row-label{ font-size:12.5px; }
-    .report-top{ grid-template-columns:1fr 1fr; }
+  @media (max-width:640px){
+    .wrap{ padding:20px 12px 48px; }
+    h1{ font-size:24px; }
+    .sub{ font-size:13.5px; }
+
+    .panel-card, .report-card, .group, .usage-guide{ padding-left:14px; padding-right:14px; }
+
+    .row{ grid-template-columns:70px 1fr 50px; gap:8px; }
+    .row-label{ font-size:12px; }
+    .score-input{ width:52px; }
+
+    .report-top{ grid-template-columns:1fr 1fr; gap:10px; }
+    .field-inline{ gap:10px 16px; font-size:12.5px; }
+
+    .add-student-row{ flex-direction:column; }
+    .add-student-row input, .add-student-row button{ width:100%; }
+
+    .session-actions{ flex-direction:column; align-items:stretch; text-align:center; }
+    #saveSessionBtn{ width:100%; }
+
+    footer{ flex-direction:column; align-items:flex-start; gap:8px; }
+
+    /* 회차 이력은 열이 많아 표 형태를 유지하고 가로 스크롤로 본다 */
     .report-table{ display:block; overflow-x:auto; }
+
+    /* 수강생 관리 표는 카드형으로 쌓아서 가로 스크롤 없이 꽉 차게 보이도록 한다 */
+    .roster-table{ min-width:0; width:100%; }
+    .roster-table thead{ display:none; }
+    .roster-table, .roster-table tbody, .roster-table tr{ display:block; width:100%; }
+    .roster-table tr{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:4px 12px;
+      margin-bottom:10px;
+      background:var(--surface);
+    }
+    .roster-table td{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      width:auto;
+      padding:8px 0;
+      border-bottom:1px dashed var(--line);
+      white-space:normal;
+    }
+    .roster-table tr:last-child{ margin-bottom:0; }
+    .roster-table td:last-child{ border-bottom:none; justify-content:center; }
+    .roster-table td::before{
+      content:attr(data-label);
+      flex:0 0 72px;
+      font-size:11px;
+      font-weight:700;
+      color:var(--ink-muted);
+    }
+    .roster-table td.name{ font-size:14.5px; }
+    .roster-table td .cell-input{ flex:1 1 auto; min-width:0; }
+    .roster-table td:last-child .roster-link{ width:100%; text-align:center; }
   }
 </style>
