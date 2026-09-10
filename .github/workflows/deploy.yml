@@ -1,0 +1,27 @@
+name: Deploy to Apps Script
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Restore clasp credentials
+        run: echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Push to Apps Script
+        run: clasp push --force
+
+      - name: Deploy web app
+        run: clasp deploy --deploymentId AKfycbxsHzw6ZH5Galf9KWmvstHuadm_k6Fkg4-kuWT9KFdggelWX4st6hrnhMnW0Fq3cAMulQ --description "auto-deploy from GitHub Actions"
