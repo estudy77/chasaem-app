@@ -129,10 +129,7 @@
     rows.forEach(function (r) {
       var tr = document.createElement("tr");
 
-      var tdName = document.createElement("td");
-      tdName.className = "name";
-      tdName.textContent = r.name;
-      tr.appendChild(tdName);
+      tr.appendChild(makeEditableCell(r.id, "name", r.name, "text", "수강생명"));
 
       tr.appendChild(makeEditableCell(r.id, "contact", r.contact, "text", "연락처"));
       tr.appendChild(makeEditableCell(r.id, "registeredDate", r.registeredDate, "date"));
@@ -178,16 +175,25 @@
 
   function makeEditableCell(studentId, field, value, type, placeholder, isMemo) {
     var td = document.createElement("td");
+    if (field === "name") td.className = "name";
     var input = document.createElement("input");
     input.type = type;
     input.className = "cell-input" + (isMemo ? " cell-memo" : "");
     input.value = value || "";
     if (placeholder) input.placeholder = placeholder;
     input.addEventListener("change", function () {
+      if (field === "name" && !input.value.trim()) {
+        input.value = value;
+        setStatus("이름은 비워둘 수 없어요.", true);
+        return;
+      }
       var patch = {};
       patch[field] = input.value;
       google.script.run
-        .withSuccessHandler(function () { setStatus("저장됨 · " + nowLabel()); })
+        .withSuccessHandler(function () {
+          setStatus("저장됨 · " + nowLabel());
+          if (field === "name") refreshStudentSelect();
+        })
         .withFailureHandler(onError)
         .updateStudentInfo(studentId, patch);
     });

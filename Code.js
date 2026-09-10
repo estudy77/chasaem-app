@@ -239,17 +239,20 @@ function addStudent(data) {
   }
 }
 
-// 수강생 관리 화면에서 연락처 / 등록일 / 강사메모를 인라인으로 수정할 때 호출
+// 수강생 관리 화면에서 이름 / 연락처 / 등록일 / 강사메모를 인라인으로 수정할 때 호출
 function updateStudentInfo(studentId, patch) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     ensureSetup_();
+    if (patch.name !== undefined && !String(patch.name).trim()) {
+      throw new Error('이름은 비워둘 수 없습니다.');
+    }
     var sheet = getSheet_(SHEET_STUDENTS, STUDENTS_HEADERS);
     var rowIndex = findRowIndexById_(sheet, studentId);
     if (rowIndex === -1) throw new Error('수강생을 찾을 수 없습니다.');
 
-    var fieldToColumn = { contact: 'Contact', registeredDate: 'RegisteredDate', memo: 'Memo' };
+    var fieldToColumn = { name: 'Name', contact: 'Contact', registeredDate: 'RegisteredDate', memo: 'Memo' };
     Object.keys(fieldToColumn).forEach(function (key) {
       if (patch[key] === undefined) return;
       var col = STUDENTS_HEADERS.indexOf(fieldToColumn[key]) + 1;
