@@ -129,31 +129,32 @@
     rows.forEach(function (r) {
       var tr = document.createElement("tr");
 
-      appendLabeled(tr, makeEditableCell(r.id, "name", r.name, "text", "수강생명"), "수강생명");
-      appendLabeled(tr, makeEditableCell(r.id, "contact", r.contact, "text", "연락처"), "연락처");
-      appendLabeled(tr, makeEditableCell(r.id, "registeredDate", r.registeredDate, "date"), "등록일");
+      tr.appendChild(makeEditableCell(r.id, "name", r.name, "text", "수강생명"));
+
+      tr.appendChild(makeEditableCell(r.id, "contact", r.contact, "text", "연락처"));
+      tr.appendChild(makeEditableCell(r.id, "registeredDate", r.registeredDate, "date"));
 
       var tdCount = document.createElement("td");
       tdCount.textContent = r.sessionCount + "회";
-      appendLabeled(tr, tdCount, "총 수업횟수");
+      tr.appendChild(tdCount);
 
       var tdRecent = document.createElement("td");
       tdRecent.textContent = r.recentScore == null ? "-" : r.recentScore + "점";
-      appendLabeled(tr, tdRecent, "최근 점수");
+      tr.appendChild(tdRecent);
 
       var tdPrev = document.createElement("td");
       tdPrev.textContent = r.prevScore == null ? "-" : r.prevScore + "점";
-      appendLabeled(tr, tdPrev, "이전 점수");
+      tr.appendChild(tdPrev);
 
       var tdDelta = document.createElement("td");
       tdDelta.innerHTML = deltaHtml(r.delta, r.sessionCount >= 2);
-      appendLabeled(tr, tdDelta, "향상도");
+      tr.appendChild(tdDelta);
 
       var tdLevel = document.createElement("td");
       tdLevel.textContent = r.level;
-      appendLabeled(tr, tdLevel, "현재 레벨");
+      tr.appendChild(tdLevel);
 
-      appendLabeled(tr, makeEditableCell(r.id, "memo", r.memo, "text", "메모", true), "강사 메모");
+      tr.appendChild(makeEditableCell(r.id, "memo", r.memo, "text", "메모", true));
 
       var tdLink = document.createElement("td");
       var linkBtn = document.createElement("button");
@@ -170,12 +171,6 @@
 
       rosterBody.appendChild(tr);
     });
-  }
-
-  // 모바일 카드 레이아웃에서 각 셀 앞에 항목명을 붙여 보여주기 위한 표시(data-label)를 단다.
-  function appendLabeled(tr, td, label) {
-    td.setAttribute("data-label", label);
-    tr.appendChild(td);
   }
 
   function makeEditableCell(studentId, field, value, type, placeholder, isMemo) {
