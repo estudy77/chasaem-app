@@ -85,9 +85,16 @@
 
 ## 코드를 수정했을 때
 
-`Code.gs`나 HTML 파일을 고친 뒤에는 **`배포 → 배포 관리 → 연필 아이콘 →
-새 버전 → 배포`** 를 눌러야 웹 앱 URL에 변경 사항이 반영됩니다. 그냥 저장만
-하면 기존 배포 URL은 예전 코드로 계속 동작합니다.
+이 저장소(`estudy77/chasaem-app`)는 GitHub Actions로 자동 배포가 설정되어
+있습니다. `master` 브랜치에 push하면(GitHub 웹 편집기에서 고쳐도, 로컬에서
+`git push`해도 상관없음) 자동으로:
+
+1. `clasp push`로 Apps Script 프로젝트에 코드 반영
+2. 기존 웹 앱 배포에 새 버전 배포
+
+가 실행됩니다 (`.github/workflows/deploy.yml`). Apps Script 편집기나 clasp를
+직접 쓸 필요 없이, **GitHub에 push만 하면 끝**입니다. 진행 상황은
+https://github.com/estudy77/chasaem-app/actions 에서 확인할 수 있습니다.
 
 ## 데이터 구조
 
