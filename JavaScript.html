@@ -407,7 +407,6 @@
     renderReportTable(summary.items, summary.hasSessions);
     renderFocus(summary);
     renderSessionForm(summary.items);
-    renderItemBarChart(summary.items);
     focusMemoEl.value = summary.student.memo || "";
     focusMemoStatusEl.textContent = "";
     setStatus("마지막 갱신: " + nowLabel());
@@ -415,8 +414,39 @@
 
   var itemBarCourseEl = document.getElementById("itemBarCourse");
   var itemBarRoadEl = document.getElementById("itemBarRoad");
+  var itemBarPeriodLabelEl = document.getElementById("itemBarPeriodLabel");
 
-  // 최근 회차 기준으로 10개 항목을 나란히 놓아, 뭘 잘하고 뭘 더 연습해야 할지 한눈에 보여준다.
+  // 일/주/월 중 선택된 단위의 "가장 최근 구간"에 속한 회차들의 항목별 평균을 계산한다.
+  function latestBucketItemAverages(chrono, granularity) {
+    var last = chrono[chrono.length - 1];
+    var key = bucketKeyOf(last.date, granularity);
+    var matching = chrono.filter(function (s) { return bucketKeyOf(s.date, granularity) === key; });
+    var sums = {};
+    ITEM_META.forEach(function (m) { sums[m.id] = 0; });
+    matching.forEach(function (s) {
+      ITEM_META.forEach(function (m) { sums[m.id] += (s.items[m.id] || 0); });
+    });
+    var avgs = {};
+    ITEM_META.forEach(function (m) { avgs[m.id] = Math.round(sums[m.id] / matching.length); });
+    return avgs;
+  }
+
+  function updateItemBarChart() {
+    if (!historyAllSessions.length) {
+      itemBarCourseEl.innerHTML = '<p class="chart-empty">아직 기록이 없어요.</p>';
+      itemBarRoadEl.innerHTML = "";
+      itemBarPeriodLabelEl.textContent = "";
+      return;
+    }
+    var chrono = historyAllSessions.slice().reverse();
+    var avgs = latestBucketItemAverages(chrono, chartGranularity);
+    var items = ITEM_META.map(function (m) { return { id: m.id, label: m.label, group: m.group, value: avgs[m.id] }; });
+    var periodText = chartGranularity === "day" ? "최근 회차 기준" : chartGranularity === "week" ? "최근 1주 평균" : "최근 1개월 평균";
+    itemBarPeriodLabelEl.textContent = periodText;
+    renderItemBarChart(items);
+  }
+
+  // 10개 항목을 나란히 놓아, 뭘 잘하고 뭘 더 연습해야 할지 한눈에 보여준다.
   function renderItemBarChart(items) {
     itemBarCourseEl.innerHTML = "";
     itemBarRoadEl.innerHTML = "";
@@ -688,6 +718,7 @@
     historyPage = 1; // 새로 불러오거나 저장/삭제한 뒤에는 최신 회차가 있는 첫 페이지부터 보여준다
     applyHistoryView();
     updateChart();
+    updateItemBarChart();
   }
 
   var sessionChartWrapEl = document.getElementById("sessionChartWrap");
@@ -711,6 +742,7 @@
         b.classList.toggle("is-active", b === btn);
       });
       updateChart();
+      updateItemBarChart();
     });
   });
   chartMetricSelectEl.addEventListener("change", function () {
