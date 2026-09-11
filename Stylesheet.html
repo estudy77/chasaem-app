@@ -647,11 +647,14 @@
     .group-title .session-no-line{ display:block; font-size:12.5px; }
     .session-no-line::before{ content:""; }
 
-    .usage-guide .tier-legend{ gap:6px; }
+    .usage-guide{ padding:4px 12px; }
+    .usage-guide .tier-legend{ gap:4px; flex-wrap:nowrap; }
     .usage-guide .tier-legend .score-chip{
       min-width:0;
-      padding:3px 6px;
-      font-size:12px;
+      flex:1 1 0;
+      padding:3px 2px;
+      font-size:10.5px;
+      letter-spacing:-0.02em;
     }
   }
 </style>
