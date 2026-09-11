@@ -401,6 +401,11 @@
     updatePreviewTotal();
   }
 
+  var TIER_VAR = { "tier-master": "--good", "tier-ok": "--tier-ok", "tier-practice": "--warn", "tier-focus": "--bad" };
+  function tierColor(v) {
+    return getComputedStyle(document.body).getPropertyValue(TIER_VAR[tierClass(v)]).trim();
+  }
+
   function buildSessionRow(item) {
     var row = document.createElement("div");
     row.className = "row";
@@ -409,11 +414,15 @@
     label.className = "row-label";
     label.textContent = item.label;
 
-    var track = document.createElement("div");
-    track.className = "bar-track";
-    var fill = document.createElement("div");
-    fill.className = "bar-fill";
-    track.appendChild(fill);
+    // 손가락으로 드래그해서 점수를 조절하는 슬라이더 (숫자 입력칸과 값이 서로 맞물려 있음)
+    var range = document.createElement("input");
+    range.type = "range";
+    range.className = "tier-range";
+    range.min = "0";
+    range.max = "100";
+    range.step = "5";
+    range.value = item.value;
+    range.setAttribute("aria-label", item.label + " 점수 슬라이더");
 
     var input = document.createElement("input");
     input.type = "number";
@@ -426,14 +435,24 @@
 
     function paint(v) {
       var tier = tierClass(v);
-      fill.style.width = Math.max(0, Math.min(100, v)) + "%";
-      fill.className = "bar-fill " + tier;
+      var color = tierColor(v);
+      range.style.setProperty("--fill-color", color);
+      range.style.background = "linear-gradient(to right, " + color + " " + v + "%, var(--surface-2) " + v + "%)";
       input.className = "score-input " + tier;
     }
     paint(item.value);
 
+    range.addEventListener("input", function () {
+      var v = clampScore(range.value);
+      input.value = v;
+      paint(v);
+      updatePreviewTotal();
+    });
+
     input.addEventListener("input", function () {
-      paint(clampScore(input.value));
+      var v = clampScore(input.value);
+      range.value = v;
+      paint(v);
       updatePreviewTotal();
     });
     input.addEventListener("blur", function () {
@@ -442,7 +461,7 @@
     });
 
     row.appendChild(label);
-    row.appendChild(track);
+    row.appendChild(range);
     row.appendChild(input);
     sessionInputs[item.id] = input;
     return row;
