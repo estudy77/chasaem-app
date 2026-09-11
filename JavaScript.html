@@ -809,8 +809,9 @@
   var CHART_PERIOD_LABEL = { day: "최근 1일 · 회차별", week: "최근 7일 · 회차별", month: "이번 달 · 회차별" };
   var chartPeriodLabelEl = document.getElementById("chartPeriodLabel");
 
-  // "일"은 가장 최근 체크된 하루, "주"는 최근 7일, "월"은 이번 달의 범위를 고르고,
-  // 그 범위 안에서 같은 날짜에 회차가 여러 개면 하루 단위로 평균 내서 하루에 점 하나로 보여준다.
+  // "일"은 가장 최근 체크된 하루에 있었던 회차를 전부 그대로 보여준다(평균 안 냄).
+  // "주"(최근 7일)/"월"(이번 달)은 범위가 넓어지니, 같은 날짜에 회차가 여러 개면 하루 단위로
+  // 평균 내서 하루에 점 하나로 보여준다.
   function updateChart() {
     chartPeriodLabelEl.textContent = CHART_PERIOD_LABEL[chartGranularity];
     if (!historyAllSessions.length) {
@@ -818,10 +819,17 @@
       return;
     }
     var chrono = historyAllSessions.slice().reverse(); // historyAllSessions는 최신이 먼저라, 그래프는 시간순(왼쪽->오른쪽)으로 그린다
-    var scoped = chartGranularity === "day" ? latestPeriodSessions(chrono, "day")
-      : chartGranularity === "week" ? lastNDaysSessions(chrono, 7)
-      : latestPeriodSessions(chrono, "month");
-    var points = groupByDayAverage(scoped, chartMetric);
+    var points;
+    if (chartGranularity === "day") {
+      var todaysSessions = latestPeriodSessions(chrono, "day");
+      points = todaysSessions.map(function (s) {
+        var val = chartMetric === "total" ? s.total : (s.items[chartMetric] || 0);
+        return { label: s.sessionNo + "회차", value: val };
+      });
+    } else {
+      var scoped = chartGranularity === "week" ? lastNDaysSessions(chrono, 7) : latestPeriodSessions(chrono, "month");
+      points = groupByDayAverage(scoped, chartMetric);
+    }
     renderSessionChart(points, metricLabel(chartMetric));
   }
 
