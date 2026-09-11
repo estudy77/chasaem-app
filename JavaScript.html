@@ -50,6 +50,8 @@
 
   var studentSelect = document.getElementById("studentSelect");
   var studentSearchEl = document.getElementById("studentSearch");
+  var chartStudentSelectEl = document.getElementById("chartStudentSelect");
+  var chartStudentSearchEl = document.getElementById("chartStudentSearch");
   var courseRowsEl = document.getElementById("courseRows");
   var roadRowsEl = document.getElementById("roadRows");
   var sessionDateEl = document.getElementById("sessionDate");
@@ -238,8 +240,10 @@
       linkBtn.addEventListener("click", function () {
         switchTab("sessions");
         studentSearchEl.value = ""; // 검색으로 옵션이 좁혀져 있어도 이 학생이 목록에 보이도록 초기화
+        chartStudentSearchEl.value = "";
         populateStudentSelect(false);
         studentSelect.value = r.id;
+        chartStudentSelectEl.value = r.id;
         loadStudent(r.id);
       });
       tdLink.appendChild(linkBtn);
@@ -300,8 +304,10 @@
           .withSuccessHandler(function (students) {
             allStudentsForSelect = students;
             studentSearchEl.value = "";
+            chartStudentSearchEl.value = "";
             populateStudentSelect(false);
             studentSelect.value = newStudent.id;
+            chartStudentSelectEl.value = newStudent.id;
             loadStudent(newStudent.id);
           })
           .withFailureHandler(onError)
@@ -328,45 +334,73 @@
       .getStudents();
   }
 
-  // 검색어로 걸러진 학생만 드롭다운에 보여준다. 학생이 많아져도 스크롤 없이 이름으로 바로 찾을 수 있다.
-  // autoLoad가 true일 때만(첫 로드) 자동으로 하나를 선택해 데이터를 불러온다 - 검색 중엔 목록만 좁혀지고
-  // 실제 선택은 사용자가 옵션을 고를 때(=change 이벤트) 이루어진다.
-  function populateStudentSelect(autoLoad) {
-    var term = studentSearchEl.value.trim().toLowerCase();
-    var filtered = term
+  function filterStudents(rawTerm) {
+    var term = rawTerm.trim().toLowerCase();
+    return term
       ? allStudentsForSelect.filter(function (s) { return s.name.toLowerCase().indexOf(term) !== -1; })
       : allStudentsForSelect;
+  }
 
-    var keep = studentSelect.value;
-    studentSelect.innerHTML = "";
-    filtered.forEach(function (s) {
+  function fillOptions(selectEl, list) {
+    selectEl.innerHTML = "";
+    list.forEach(function (s) {
       var opt = document.createElement("option");
       opt.value = s.id;
       opt.textContent = s.name;
-      studentSelect.appendChild(opt);
+      selectEl.appendChild(opt);
     });
+  }
 
-    if (!filtered.length) {
-      setStatus(allStudentsForSelect.length ? "검색 결과가 없어요." : "등록된 수강생이 없어요. 수강생 관리 탭에서 먼저 추가해 주세요.");
+  // 검색어로 걸러진 학생만 드롭다운에 보여준다 (회차별 평가 탭 / 개인별 그래프 탭 두 선택 상자를 함께 채운다).
+  // 학생이 많아져도 스크롤 없이 이름으로 바로 찾을 수 있다.
+  // autoLoad가 true일 때만(첫 로드 등) 자동으로 하나를 선택해 데이터를 불러온다 - 검색 중엔 목록만 좁혀지고
+  // 실제 선택은 사용자가 옵션을 고를 때(=change 이벤트) 이루어진다.
+  function populateStudentSelect(autoLoad) {
+    var filteredMain = filterStudents(studentSearchEl.value);
+    var filteredChart = filterStudents(chartStudentSearchEl.value);
+    fillOptions(studentSelect, filteredMain);
+    fillOptions(chartStudentSelectEl, filteredChart);
+
+    if (!allStudentsForSelect.length) {
+      setStatus("등록된 수강생이 없어요. 수강생 관리 탭에서 먼저 추가해 주세요.");
       return;
     }
 
-    var target = null;
-    if (filtered.some(function (s) { return s.id === keep; })) target = keep;
-    else if (autoLoad) {
-      var remembered = null;
-      try { remembered = localStorage.getItem(LAST_STUDENT_KEY); } catch (e) {}
-      target = filtered.some(function (s) { return s.id === remembered; }) ? remembered : filtered[0].id;
-    } else {
-      target = filtered[0].id;
+    var alreadyCurrent = allStudentsForSelect.some(function (s) { return s.id === currentStudentId; });
+    if (alreadyCurrent) {
+      if (filteredMain.some(function (s) { return s.id === currentStudentId; })) studentSelect.value = currentStudentId;
+      if (filteredChart.some(function (s) { return s.id === currentStudentId; })) chartStudentSelectEl.value = currentStudentId;
+      return;
     }
 
+    if (!autoLoad) {
+      // 검색해서 목록만 좁히는 중이면, 강제로 다른 학생을 불러오지 않고 눈에 보이는 첫 항목만 선택 표시해 둔다.
+      if (filteredMain.length) studentSelect.value = filteredMain[0].id;
+      if (filteredChart.length) chartStudentSelectEl.value = filteredChart[0].id;
+      return;
+    }
+
+    var remembered = null;
+    try { remembered = localStorage.getItem(LAST_STUDENT_KEY); } catch (e) {}
+    var target = allStudentsForSelect.some(function (s) { return s.id === remembered; })
+      ? remembered
+      : allStudentsForSelect[0].id;
     studentSelect.value = target;
-    if (autoLoad) loadStudent(target);
+    chartStudentSelectEl.value = target;
+    loadStudent(target);
   }
 
   studentSearchEl.addEventListener("input", function () { populateStudentSelect(false); });
-  studentSelect.addEventListener("change", function () { loadStudent(studentSelect.value); });
+  studentSelect.addEventListener("change", function () {
+    chartStudentSelectEl.value = studentSelect.value;
+    loadStudent(studentSelect.value);
+  });
+
+  chartStudentSearchEl.addEventListener("input", function () { populateStudentSelect(false); });
+  chartStudentSelectEl.addEventListener("change", function () {
+    studentSelect.value = chartStudentSelectEl.value;
+    loadStudent(chartStudentSelectEl.value);
+  });
 
   function loadStudent(studentId) {
     currentStudentId = studentId;
@@ -382,7 +416,6 @@
   function onSummary(summary) {
     currentSummary = summary;
 
-    document.getElementById("chartStudentName").textContent = summary.student.name;
     document.getElementById("reportAvg").textContent = summary.hasSessions ? summary.overall + "점" : "-";
     document.getElementById("reportPrev").textContent = summary.prevScore == null ? "-" : summary.prevScore + "점";
     document.getElementById("reportLevel").textContent = summary.level;
@@ -802,7 +835,7 @@
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
   function renderSessionChart(points, seriesLabel) {
-    var w = 720, h = 340, padL = 36, padR = 18, padT = 36, padB = 34;
+    var w = 720, h = 360, padL = 40, padR = 18, padT = 46, padB = 38;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
 
@@ -812,28 +845,28 @@
     var grid = [0, 25, 50, 75, 100].map(function (v) {
       return '<line x1="' + padL + '" y1="' + yAt(v) + '" x2="' + (w - padR) + '" y2="' + yAt(v) +
         '" stroke="var(--line)" stroke-width="1"/>' +
-        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 4) + '" font-size="11" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
+        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 5) + '" font-size="14" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
     }).join("");
 
     var linePoints = points.map(function (p, i) { return xAt(i) + "," + yAt(p.value); }).join(" ");
     var areaPoints = xAt(0) + "," + yAt(0) + " " + linePoints + " " + xAt(n - 1) + "," + yAt(0);
 
     var dots = points.map(function (p, i) {
-      return '<circle cx="' + xAt(i) + '" cy="' + yAt(p.value) + '" r="6" fill="' + tierColor(p.value) +
-        '" stroke="var(--surface)" stroke-width="2"/>';
+      return '<circle cx="' + xAt(i) + '" cy="' + yAt(p.value) + '" r="7" fill="' + tierColor(p.value) +
+        '" stroke="var(--surface)" stroke-width="2.5"/>';
     }).join("");
 
     // 각 점 위에 실제 점수를 직접 써준다 (0/100처럼 위쪽 공간이 부족한 값은 점 아래로 내려서 표시)
     var valueLabels = points.map(function (p, i) {
       var above = p.value < 92;
-      var ly = above ? yAt(p.value) - 12 : yAt(p.value) + 20;
-      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="13" font-weight="700" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
+      var ly = above ? yAt(p.value) - 16 : yAt(p.value) + 26;
+      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="18" font-weight="800" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
     }).join("");
 
     var everyNth = Math.max(1, Math.ceil(n / 12));
     var xLabels = points.map(function (p, i) {
       if (i !== 0 && i !== n - 1 && i % everyNth !== 0) return "";
-      return '<text x="' + xAt(i) + '" y="' + (h - 10) + '" font-size="11" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
+      return '<text x="' + xAt(i) + '" y="' + (h - 12) + '" font-size="13" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
     }).join("");
 
     sessionChartWrapEl.innerHTML =
@@ -844,7 +877,7 @@
       '</linearGradient></defs>' +
       grid +
       '<polygon points="' + areaPoints + '" fill="url(#chartAreaFill)"/>' +
-      '<polyline points="' + linePoints + '" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<polyline points="' + linePoints + '" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>' +
       dots +
       valueLabels +
       xLabels +
