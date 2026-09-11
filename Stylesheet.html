@@ -417,17 +417,22 @@
     margin-right:8px;
     vertical-align:2px;
   }
-  /* "새 회차 입력 · N회차"의 회차 번호 부분은 위 배지 스타일을 쓰지 않는 일반 텍스트 */
-  .group-title .session-no-line{
+  /* "새 회차 입력 · N회차"의 회차 번호 부분과 제목 라벨은 위 배지 스타일을 쓰지 않는 일반 텍스트 */
+  .group-title .session-no-line,
+  .group-title #sessionFormLabel{
     display:inline;
     font-size:inherit;
-    font-weight:600;
-    color:var(--ink-muted);
+    font-weight:inherit;
+    color:inherit;
     background:none;
     border-radius:0;
     padding:0;
     margin-right:0;
     vertical-align:baseline;
+  }
+  .group-title .session-no-line{
+    font-weight:600;
+    color:var(--ink-muted);
   }
   .session-no-line::before{ content:" · "; color:var(--ink-muted); }
   .row{

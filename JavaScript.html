@@ -539,6 +539,9 @@
       );
   });
 
+  var sessionFormLabelEl = document.getElementById("sessionFormLabel");
+  var nextSessionNoEl = document.getElementById("nextSessionNo");
+
   function startEditSession(session) {
     editingSessionId = session.sessionId;
     sessionDateEl.value = session.date;
@@ -550,6 +553,8 @@
     editBannerTextEl.textContent = session.sessionNo + "회차를 수정하고 있어요.";
     editBannerEl.hidden = false;
     saveSessionBtn.textContent = session.sessionNo + "회차 수정 저장";
+    sessionFormLabelEl.textContent = "회차 수정";
+    nextSessionNoEl.textContent = session.sessionNo;
     document.getElementById("tabSessions").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -557,7 +562,9 @@
     editingSessionId = null;
     editBannerEl.hidden = true;
     saveSessionBtn.textContent = "이번 회차 저장";
+    sessionFormLabelEl.textContent = "새 회차 입력";
     if (currentSummary) {
+      nextSessionNoEl.textContent = currentSummary.nextSessionNo;
       sessionDateEl.value = todayStr();
       renderSessionForm(currentSummary.items);
     }
