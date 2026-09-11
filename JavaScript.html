@@ -34,6 +34,10 @@
   var rosterPage = 1;
   var ROSTER_PAGE_SIZE = 5;
 
+  var historyAllSessions = [];
+  var historyPage = 1;
+  var HISTORY_PAGE_SIZE = 5;
+
   var newStudentName = document.getElementById("newStudentName");
   var newStudentContact = document.getElementById("newStudentContact");
   var newStudentDate = document.getElementById("newStudentDate");
@@ -47,6 +51,7 @@
   var deleteLastBtn = document.getElementById("deleteLastBtn");
   var historyHeadEl = document.getElementById("historyHead");
   var historyBodyEl = document.getElementById("historyBody");
+  var historyPaginationEl = document.getElementById("historyPagination");
   var statusNote = document.getElementById("statusNote");
 
   /* ---------------------------------------------------------------- */
@@ -154,21 +159,25 @@
       : "";
 
     renderRoster(pageRows, filtered.length, term);
-    renderRosterPagination(totalPages);
+    renderPagination(rosterPaginationEl, totalPages, rosterPage, function (p) {
+      rosterPage = p;
+      applyRosterView();
+    });
   }
 
-  function renderRosterPagination(totalPages) {
-    rosterPaginationEl.innerHTML = "";
+  // 페이지 번호 버튼을 그리는 공용 함수 (수강생 관리 표 / 수업 이력 표 둘 다 사용)
+  function renderPagination(containerEl, totalPages, currentPage, onSelect) {
+    containerEl.innerHTML = "";
     if (totalPages <= 1) return;
     for (var p = 1; p <= totalPages; p++) {
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "page-btn" + (p === rosterPage ? " is-active" : "");
+      btn.className = "page-btn" + (p === currentPage ? " is-active" : "");
       btn.textContent = String(p);
       btn.addEventListener("click", (function (page) {
-        return function () { rosterPage = page; applyRosterView(); };
+        return function () { onSelect(page); };
       })(p));
-      rosterPaginationEl.appendChild(btn);
+      containerEl.appendChild(btn);
     }
   }
 
@@ -530,8 +539,28 @@
   }
 
   function onSessions(sessions) {
+    historyAllSessions = sessions;
+    historyPage = 1; // 새로 불러오거나 저장/삭제한 뒤에는 최신 회차가 있는 첫 페이지부터 보여준다
+    applyHistoryView();
+  }
+
+  function applyHistoryView() {
+    var totalPages = Math.max(1, Math.ceil(historyAllSessions.length / HISTORY_PAGE_SIZE));
+    if (historyPage > totalPages) historyPage = totalPages;
+    if (historyPage < 1) historyPage = 1;
+    var start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    var pageRows = historyAllSessions.slice(start, start + HISTORY_PAGE_SIZE);
+
+    renderHistoryRows(pageRows);
+    renderPagination(historyPaginationEl, totalPages, historyPage, function (p) {
+      historyPage = p;
+      applyHistoryView();
+    });
+  }
+
+  function renderHistoryRows(sessions) {
     historyBodyEl.innerHTML = "";
-    if (!sessions.length) {
+    if (!historyAllSessions.length) {
       historyBodyEl.innerHTML = '<tr><td class="empty-row">아직 기록이 없어요.</td></tr>';
       return;
     }
