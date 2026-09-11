@@ -835,7 +835,7 @@
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
   function renderSessionChart(points, seriesLabel) {
-    var w = 720, h = 360, padL = 40, padR = 18, padT = 46, padB = 38;
+    var w = 720, h = 400, padL = 44, padR = 20, padT = 68, padB = 40;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
 
@@ -856,11 +856,11 @@
         '" stroke="var(--surface)" stroke-width="2.5"/>';
     }).join("");
 
-    // 각 점 위에 실제 점수를 직접 써준다 (0/100처럼 위쪽 공간이 부족한 값은 점 아래로 내려서 표시)
+    // 각 점 위에 실제 점수를 직접 크게 써준다 (0/100처럼 위쪽 공간이 부족한 값은 점 아래로 내려서 표시)
     var valueLabels = points.map(function (p, i) {
-      var above = p.value < 92;
-      var ly = above ? yAt(p.value) - 16 : yAt(p.value) + 26;
-      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="18" font-weight="800" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
+      var above = p.value < 88;
+      var ly = above ? yAt(p.value) - 22 : yAt(p.value) + 40;
+      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="30" font-weight="800" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
     }).join("");
 
     var everyNth = Math.max(1, Math.ceil(n / 12));
