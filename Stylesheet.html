@@ -746,6 +746,42 @@
     font-size:13px;
   }
 
+  .item-bar-list{ padding-bottom:4px; }
+  .item-bar-row{
+    display:grid;
+    grid-template-columns:88px 1fr 42px;
+    align-items:center;
+    gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .item-bar-row:last-child{ border-bottom:none; }
+  .item-bar-label{ font-size:13px; font-weight:600; color:var(--ink); }
+  .item-bar-track{
+    position:relative;
+    height:14px;
+    border-radius:999px;
+    background:var(--surface-2);
+    overflow:hidden;
+  }
+  .item-bar-fill{
+    position:absolute;
+    inset:0 auto 0 0;
+    height:100%;
+    border-radius:999px;
+  }
+  .item-bar-fill.tier-master{ background:var(--good); }
+  .item-bar-fill.tier-ok{ background:var(--tier-ok); }
+  .item-bar-fill.tier-practice{ background:var(--warn); }
+  .item-bar-fill.tier-focus{ background:var(--bad); }
+  .item-bar-value{
+    font-size:13px;
+    font-weight:700;
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    color:var(--ink);
+  }
+
   .focus-memo{
     margin-top:12px;
     padding-top:12px;
