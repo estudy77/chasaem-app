@@ -45,6 +45,7 @@
   var addStudentBtn = document.getElementById("addStudentBtn");
 
   var studentSelect = document.getElementById("studentSelect");
+  var studentSearchEl = document.getElementById("studentSearch");
   var courseRowsEl = document.getElementById("courseRows");
   var roadRowsEl = document.getElementById("roadRows");
   var sessionDateEl = document.getElementById("sessionDate");
@@ -232,6 +233,8 @@
       linkBtn.textContent = "회차별 평가 →";
       linkBtn.addEventListener("click", function () {
         switchTab("sessions");
+        studentSearchEl.value = ""; // 검색으로 옵션이 좁혀져 있어도 이 학생이 목록에 보이도록 초기화
+        populateStudentSelect(false);
         studentSelect.value = r.id;
         loadStudent(r.id);
       });
@@ -294,37 +297,56 @@
   /* 탭 2: 회차별 평가                                                   */
   /* ---------------------------------------------------------------- */
 
+  var allStudentsForSelect = [];
+
   function refreshStudentSelect() {
     google.script.run
       .withSuccessHandler(function (students) {
-        var keep = studentSelect.value;
-        var remembered = null;
-        try { remembered = localStorage.getItem(LAST_STUDENT_KEY); } catch (e) {}
-
-        studentSelect.innerHTML = "";
-        students.forEach(function (s) {
-          var opt = document.createElement("option");
-          opt.value = s.id;
-          opt.textContent = s.name;
-          studentSelect.appendChild(opt);
-        });
-
-        var target = null;
-        if (students.some(function (s) { return s.id === keep; })) target = keep;
-        else if (students.some(function (s) { return s.id === remembered; })) target = remembered;
-        else if (students.length) target = students[0].id;
-
-        if (target) {
-          studentSelect.value = target;
-          loadStudent(target);
-        } else {
-          setStatus("등록된 수강생이 없어요. 수강생 관리 탭에서 먼저 추가해 주세요.");
-        }
+        allStudentsForSelect = students;
+        populateStudentSelect(true);
       })
       .withFailureHandler(onError)
       .getStudents();
   }
 
+  // 검색어로 걸러진 학생만 드롭다운에 보여준다. 학생이 많아져도 스크롤 없이 이름으로 바로 찾을 수 있다.
+  // autoLoad가 true일 때만(첫 로드) 자동으로 하나를 선택해 데이터를 불러온다 - 검색 중엔 목록만 좁혀지고
+  // 실제 선택은 사용자가 옵션을 고를 때(=change 이벤트) 이루어진다.
+  function populateStudentSelect(autoLoad) {
+    var term = studentSearchEl.value.trim().toLowerCase();
+    var filtered = term
+      ? allStudentsForSelect.filter(function (s) { return s.name.toLowerCase().indexOf(term) !== -1; })
+      : allStudentsForSelect;
+
+    var keep = studentSelect.value;
+    studentSelect.innerHTML = "";
+    filtered.forEach(function (s) {
+      var opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.name;
+      studentSelect.appendChild(opt);
+    });
+
+    if (!filtered.length) {
+      setStatus(allStudentsForSelect.length ? "검색 결과가 없어요." : "등록된 수강생이 없어요. 수강생 관리 탭에서 먼저 추가해 주세요.");
+      return;
+    }
+
+    var target = null;
+    if (filtered.some(function (s) { return s.id === keep; })) target = keep;
+    else if (autoLoad) {
+      var remembered = null;
+      try { remembered = localStorage.getItem(LAST_STUDENT_KEY); } catch (e) {}
+      target = filtered.some(function (s) { return s.id === remembered; }) ? remembered : filtered[0].id;
+    } else {
+      target = filtered[0].id;
+    }
+
+    studentSelect.value = target;
+    if (autoLoad) loadStudent(target);
+  }
+
+  studentSearchEl.addEventListener("input", function () { populateStudentSelect(false); });
   studentSelect.addEventListener("change", function () { loadStudent(studentSelect.value); });
 
   function loadStudent(studentId) {
