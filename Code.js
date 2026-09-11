@@ -218,10 +218,11 @@ function getStudentSummary(studentId) {
   };
 }
 
-// 회차별 평가 화면 하단의 "수업 이력" 표 - 최신 회차가 위로 오도록 반환
+// 회차별 평가 화면 하단의 "수업 이력" 표 - 오래된 회차부터 순서대로 반환
+// (맨 아래 줄이 최신 회차가 되어야 "마지막 회차 삭제"가 지우는 줄과 일치한다)
 function getSessions(studentId) {
   ensureSetup_();
-  return readSessions_(studentId).slice().reverse();
+  return readSessions_(studentId);
 }
 
 /* ---------------------------------------------------------------------- */
