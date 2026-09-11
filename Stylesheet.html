@@ -291,6 +291,46 @@
   }
   .date-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
 
+  .edit-banner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:var(--accent-soft);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 14px;
+    margin-top:12px;
+    font-size:13px;
+    color:var(--ink);
+  }
+  .edit-banner button{
+    font:inherit;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-2);
+    background:var(--surface);
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    padding:5px 12px;
+    cursor:pointer;
+  }
+  .edit-banner button:hover{ border-color:var(--bad); color:var(--bad); }
+
+  .row-edit-btn{
+    font:inherit;
+    font-size:12px;
+    font-weight:700;
+    color:var(--accent);
+    background:var(--accent-soft);
+    border:none;
+    border-radius:7px;
+    padding:5px 10px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .row-edit-btn:hover{ filter:brightness(1.05); }
+
   .session-actions{
     display:flex;
     align-items:center;

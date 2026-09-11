@@ -22,6 +22,7 @@
   var currentStudentId = null;
   var currentSummary = null;
   var sessionInputs = {};
+  var editingSessionId = null;
 
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
   var panels = { roster: document.getElementById("tabRoster"), sessions: document.getElementById("tabSessions") };
@@ -52,6 +53,9 @@
   var historyHeadEl = document.getElementById("historyHead");
   var historyBodyEl = document.getElementById("historyBody");
   var historyPaginationEl = document.getElementById("historyPagination");
+  var editBannerEl = document.getElementById("editBanner");
+  var editBannerTextEl = document.getElementById("editBannerText");
+  var cancelEditBtn = document.getElementById("cancelEditBtn");
   var statusNote = document.getElementById("statusNote");
 
   /* ---------------------------------------------------------------- */
@@ -326,6 +330,9 @@
   function loadStudent(studentId) {
     currentStudentId = studentId;
     try { localStorage.setItem(LAST_STUDENT_KEY, studentId); } catch (e) {}
+    editingSessionId = null;
+    editBannerEl.hidden = true;
+    saveSessionBtn.textContent = "이번 회차 저장";
     setStatus("불러오는 중…");
     google.script.run.withSuccessHandler(onSummary).withFailureHandler(onError).getStudentSummary(studentId);
     google.script.run.withSuccessHandler(onSessions).withFailureHandler(onError).getSessions(studentId);
@@ -488,20 +495,53 @@
     if (!currentStudentId) return;
     var itemScores = {};
     Object.keys(sessionInputs).forEach(function (id) { itemScores[id] = clampScore(sessionInputs[id].value); });
+    var dateStr = sessionDateEl.value || todayStr();
 
     saveSessionBtn.disabled = true;
-    setStatus("저장 중…");
+    setStatus(editingSessionId ? "수정 저장 중…" : "저장 중…");
+    var wasEditing = editingSessionId;
+
     google.script.run
       .withSuccessHandler(function (result) {
         saveSessionBtn.disabled = false;
         onSummary(result.summary);
         onSessions(result.sessions);
         refreshRoster();
-        setStatus("회차가 저장됐어요 · " + nowLabel());
+        setStatus((wasEditing ? "회차를 수정했어요" : "회차가 저장됐어요") + " · " + nowLabel());
+        if (wasEditing) cancelEdit();
       })
       .withFailureHandler(function (err) { saveSessionBtn.disabled = false; onError(err); })
-      .addSession(currentStudentId, sessionDateEl.value || todayStr(), itemScores);
+      [editingSessionId ? "updateSession" : "addSession"].apply(
+        null,
+        editingSessionId ? [editingSessionId, currentStudentId, dateStr, itemScores] : [currentStudentId, dateStr, itemScores]
+      );
   });
+
+  function startEditSession(session) {
+    editingSessionId = session.sessionId;
+    sessionDateEl.value = session.date;
+    Object.keys(sessionInputs).forEach(function (id) {
+      var input = sessionInputs[id];
+      input.value = session.items[id] || 0;
+      input.dispatchEvent(new Event("input"));
+    });
+    editBannerTextEl.textContent = session.sessionNo + "회차를 수정하고 있어요.";
+    editBannerEl.hidden = false;
+    saveSessionBtn.textContent = session.sessionNo + "회차 수정 저장";
+    document.getElementById("tabSessions").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelEdit() {
+    editingSessionId = null;
+    editBannerEl.hidden = true;
+    saveSessionBtn.textContent = "이번 회차 저장";
+    if (currentSummary) {
+      sessionDateEl.value = todayStr();
+      renderSessionForm(currentSummary.items);
+    }
+  }
+
+  cancelEditBtn.addEventListener("click", cancelEdit);
 
   deleteLastBtn.addEventListener("click", function () {
     if (!currentStudentId || !currentSummary || !currentSummary.hasSessions) return;
@@ -528,7 +568,7 @@
 
   function renderHistoryHeader() {
     var tr = document.createElement("tr");
-    ["수업일", "회차"].concat(ITEM_META.map(function (i) { return i.label; }), ["종합점수", "이전점수"])
+    ["수업일", "회차"].concat(ITEM_META.map(function (i) { return i.label; }), ["종합점수", "이전점수", ""])
       .forEach(function (h) {
         var th = document.createElement("th");
         th.textContent = h;
@@ -587,6 +627,15 @@
       var tdPrev = document.createElement("td");
       tdPrev.textContent = s.prevScore == null ? "-" : s.prevScore + "점";
       tr.appendChild(tdPrev);
+
+      var tdEdit = document.createElement("td");
+      var editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "row-edit-btn";
+      editBtn.textContent = "수정";
+      editBtn.addEventListener("click", function () { startEditSession(s); });
+      tdEdit.appendChild(editBtn);
+      tr.appendChild(tdEdit);
 
       historyBodyEl.appendChild(tr);
     });

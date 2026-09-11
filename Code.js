@@ -294,6 +294,34 @@ function addSession(studentId, dateStr, itemScores) {
   return { summary: getStudentSummary(studentId), sessions: getSessions(studentId) };
 }
 
+// 이미 저장된 회차의 수업일/항목 점수를 고쳐 쓴다. 회차 번호·이전점수·생성일시는 그대로 둔다.
+function updateSession(sessionId, studentId, dateStr, itemScores) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    ensureSetup_();
+    var sheet = getSheet_(SHEET_SESSIONS, SESSIONS_HEADERS);
+    var rows = sheet.getDataRange().getValues();
+    var idx = headerIndex_(rows[0]);
+
+    var rowIndex = -1;
+    for (var r = 1; r < rows.length; r++) {
+      if (rows[r][idx.SessionId] === sessionId && rows[r][idx.StudentId] === studentId) { rowIndex = r; break; }
+    }
+    if (rowIndex === -1) throw new Error('수정할 회차를 찾을 수 없습니다.');
+
+    var total = computeTotal_(itemScores || {});
+    var itemValues = ITEMS.map(function (item) { return clampScore_((itemScores || {})[item.id]); });
+
+    sheet.getRange(rowIndex + 1, idx.Date + 1).setValue(dateStr || todayKey_());
+    sheet.getRange(rowIndex + 1, idx[ITEMS[0].id] + 1, 1, ITEMS.length).setValues([itemValues]);
+    sheet.getRange(rowIndex + 1, idx.TotalScore + 1).setValue(total);
+  } finally {
+    lock.releaseLock();
+  }
+  return { summary: getStudentSummary(studentId), sessions: getSessions(studentId) };
+}
+
 // 잘못 입력한 마지막 회차를 삭제 (되돌리기). 과거 회차는 손대지 않는다.
 function deleteLastSession(studentId) {
   var lock = LockService.getScriptLock();
