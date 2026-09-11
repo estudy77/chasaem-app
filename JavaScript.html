@@ -279,14 +279,29 @@
     addStudentBtn.disabled = true;
     setStatus("수강생 등록 중…");
     google.script.run
-      .withSuccessHandler(function () {
+      .withSuccessHandler(function (newStudent) {
         addStudentBtn.disabled = false;
         newStudentName.value = "";
         newStudentContact.value = "";
         newStudentDate.value = todayStr();
         setStatus("등록됨 · " + nowLabel());
+
+        // 등록한 수강생이 검색/페이지에 가려 안 보이는 일이 없도록 명단 보기를 초기화한다.
+        rosterSearchEl.value = "";
+        rosterPage = 1;
         refreshRoster();
-        refreshStudentSelect();
+
+        // 회차별 평가 탭도 방금 등록한 수강생으로 바로 전환해서 이어서 점수를 입력할 수 있게 한다.
+        google.script.run
+          .withSuccessHandler(function (students) {
+            allStudentsForSelect = students;
+            studentSearchEl.value = "";
+            populateStudentSelect(false);
+            studentSelect.value = newStudent.id;
+            loadStudent(newStudent.id);
+          })
+          .withFailureHandler(onError)
+          .getStudents();
       })
       .withFailureHandler(function (err) { addStudentBtn.disabled = false; onError(err); })
       .addStudent({ name: name, contact: newStudentContact.value.trim(), registeredDate: newStudentDate.value });
