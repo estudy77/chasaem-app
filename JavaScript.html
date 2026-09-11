@@ -387,8 +387,29 @@
     renderReportTable(summary.items, summary.hasSessions);
     renderFocus(summary);
     renderSessionForm(summary.items);
+    focusMemoEl.value = summary.student.memo || "";
+    focusMemoStatusEl.textContent = "";
     setStatus("마지막 갱신: " + nowLabel());
   }
+
+  var focusMemoEl = document.getElementById("focusMemo");
+  var focusMemoStatusEl = document.getElementById("focusMemoStatus");
+  var focusMemoTimer = null;
+
+  focusMemoEl.addEventListener("input", function () {
+    focusMemoStatusEl.textContent = "저장 중…";
+    if (focusMemoTimer) clearTimeout(focusMemoTimer);
+    focusMemoTimer = setTimeout(function () {
+      if (!currentStudentId) return;
+      google.script.run
+        .withSuccessHandler(function () {
+          focusMemoStatusEl.textContent = "저장됨 · " + nowLabel();
+          refreshRoster();
+        })
+        .withFailureHandler(onError)
+        .updateStudentInfo(currentStudentId, { memo: focusMemoEl.value });
+    }, 700);
+  });
 
   function renderReportTable(items, hasSessions) {
     var tbody = document.getElementById("reportTableBody");
