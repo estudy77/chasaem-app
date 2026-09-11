@@ -241,7 +241,12 @@ function addStudent(data) {
 
     var sheet = getSheet_(SHEET_STUDENTS, STUDENTS_HEADERS);
     var id = Utilities.getUuid();
-    sheet.appendRow([id, name, contact, registeredDate, '']);
+    // Contact는 일단 비워서 행을 만들고, 실제 그 셀에 "서식(텍스트) -> 값" 순서로 확실히 써서
+    // 010으로 시작하는 번호의 앞자리 0이 숫자로 인식돼 사라지는 걸 막는다.
+    sheet.appendRow([id, name, '', registeredDate, '']);
+    var newRow = sheet.getLastRow();
+    var contactCol = STUDENTS_HEADERS.indexOf('Contact') + 1;
+    sheet.getRange(newRow, contactCol).setNumberFormat('@').setValue(contact);
     return { id: id, name: name };
   } finally {
     lock.releaseLock();
@@ -265,7 +270,10 @@ function updateStudentInfo(studentId, patch) {
     Object.keys(fieldToColumn).forEach(function (key) {
       if (patch[key] === undefined) return;
       var col = STUDENTS_HEADERS.indexOf(fieldToColumn[key]) + 1;
-      sheet.getRange(rowIndex + 1, col).setValue(patch[key]);
+      var cell = sheet.getRange(rowIndex + 1, col);
+      // 연락처는 앞자리 0이 숫자로 인식돼 사라지지 않도록 "서식(텍스트) -> 값" 순서로 쓴다.
+      if (key === 'contact') cell.setNumberFormat('@');
+      cell.setValue(patch[key]);
     });
   } finally {
     lock.releaseLock();
