@@ -806,10 +806,10 @@
     return Number(parts[1]) + "/" + Number(parts[2]);
   }
 
-  var CHART_PERIOD_LABEL = { day: "전체 회차 · 회차별", week: "최근 1주 · 회차별", month: "최근 1개월 · 회차별" };
+  var CHART_PERIOD_LABEL = { day: "최근 1일 · 회차별", week: "최근 7일 · 회차별", month: "이번 달 · 회차별" };
   var chartPeriodLabelEl = document.getElementById("chartPeriodLabel");
 
-  // 일/주/월 어느 것도 평균 내지 않는다 - "일"은 전체 기록을, "주"/"월"은 가장 최근 주/달에
+  // 평균은 내지 않는다 - "일"은 가장 최근 체크된 하루, "주"는 최근 7일, "월"은 이번 달에
   // 속한 회차만 골라서 각 회차 점수를 하나씩 그대로 점으로 그린다.
   function updateChart() {
     chartPeriodLabelEl.textContent = CHART_PERIOD_LABEL[chartGranularity];
@@ -818,7 +818,9 @@
       return;
     }
     var chrono = historyAllSessions.slice().reverse(); // historyAllSessions는 최신이 먼저라, 그래프는 시간순(왼쪽->오른쪽)으로 그린다
-    var scoped = chartGranularity === "day" ? chrono : latestPeriodSessions(chrono, chartGranularity);
+    var scoped = chartGranularity === "day" ? latestPeriodSessions(chrono, "day")
+      : chartGranularity === "week" ? lastNDaysSessions(chrono, 7)
+      : latestPeriodSessions(chrono, "month");
     var points = scoped.map(function (s) {
       var val = chartMetric === "total" ? s.total : (s.items[chartMetric] || 0);
       return { label: bucketLabelOf(s.date), value: val };
@@ -826,11 +828,23 @@
     renderSessionChart(points, metricLabel(chartMetric));
   }
 
-  // 가장 최근 회차가 속한 주(월~일) 또는 달에 속하는 회차만 골라낸다.
+  // 가장 최근 회차가 속한 하루(day) 또는 이번 달(month)에 속하는 회차만 골라낸다.
   function latestPeriodSessions(chrono, granularity) {
     var last = chrono[chrono.length - 1];
     var periodKey = bucketKeyOf(last.date, granularity);
     return chrono.filter(function (s) { return bucketKeyOf(s.date, granularity) === periodKey; });
+  }
+
+  // 가장 최근 회차 날짜로부터 최근 N일(오늘 포함) 안에 속하는 회차만 골라낸다.
+  function lastNDaysSessions(chrono, days) {
+    var last = chrono[chrono.length - 1];
+    var lastDate = new Date(last.date + "T00:00:00");
+    var startDate = new Date(lastDate);
+    startDate.setDate(lastDate.getDate() - (days - 1));
+    return chrono.filter(function (s) {
+      var d = new Date(s.date + "T00:00:00");
+      return d >= startDate && d <= lastDate;
+    });
   }
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
