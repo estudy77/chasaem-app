@@ -141,7 +141,9 @@ function ensureContactColumnIsText_(studentsSheet) {
 
 function getStudents() {
   ensureSetup_();
-  return readAllStudents_().map(function (s) { return { id: s.id, name: s.name }; });
+  return readAllStudents_()
+    .map(function (s) { return { id: s.id, name: s.name }; })
+    .sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
 }
 
 // "수강생 관리" 화면용 - 학생별 요약 행 (총 수업횟수/최근점수/이전점수/향상도/레벨 포함)
