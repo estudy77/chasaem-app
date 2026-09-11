@@ -441,7 +441,7 @@
     var chrono = historyAllSessions.slice().reverse();
     var avgs = latestBucketItemAverages(chrono, chartGranularity);
     var items = ITEM_META.map(function (m) { return { id: m.id, label: m.label, group: m.group, value: avgs[m.id] }; });
-    var periodText = chartGranularity === "day" ? "최근 회차 기준" : chartGranularity === "week" ? "최근 1주 평균" : "최근 1개월 평균";
+    var periodText = chartGranularity === "day" ? "일평균" : chartGranularity === "week" ? "주평균" : "월평균";
     itemBarPeriodLabelEl.textContent = periodText;
     renderItemBarChart(items);
   }
