@@ -147,7 +147,8 @@ function getStudents() {
 // "수강생 관리" 화면용 - 학생별 요약 행 (총 수업횟수/최근점수/이전점수/향상도/레벨 포함)
 function getStudentRoster() {
   ensureSetup_();
-  var students = readAllStudents_();
+  // 등록한 순서(시트에 쌓이는 순서)의 반대로 보여줘서 최근에 등록한 수강생이 맨 위로 오게 한다.
+  var students = readAllStudents_().reverse();
   return students.map(function (s) {
     var sessions = readSessions_(s.id);
     var latest = sessions.length ? sessions[sessions.length - 1] : null;
