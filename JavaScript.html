@@ -800,24 +800,32 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
+  // 주 단위는 "그 주의 월요일 날짜" 하나만 보여주면 회차와 안 맞아 보일 수 있어서,
+  // 월~일 전체 범위(예: 9/7~9/13)를 라벨로 보여준다.
   function bucketLabelOf(key, granularity) {
     var parts = key.split("-");
     if (granularity === "month") return Number(parts[1]) + "월";
+    if (granularity === "week") {
+      var start = new Date(key + "T00:00:00");
+      var end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return (start.getMonth() + 1) + "/" + start.getDate() + "~" + (end.getMonth() + 1) + "/" + end.getDate();
+    }
     return Number(parts[1]) + "/" + Number(parts[2]);
   }
 
   // 같은 구간(일/주/월)에 여러 회차가 있으면 평균을 낸다.
+  // 구간 키(YYYY-MM-DD, YYYY-MM)는 문자열 정렬 그대로가 날짜순이라, 정렬해서 항상 왼쪽이 이전 날짜가 되게 한다.
   function aggregateForChart(chrono, granularity, metric) {
-    var order = [];
     var buckets = {};
     chrono.forEach(function (s) {
       var key = bucketKeyOf(s.date, granularity);
-      if (!buckets[key]) { buckets[key] = { sum: 0, count: 0 }; order.push(key); }
+      if (!buckets[key]) buckets[key] = { sum: 0, count: 0 };
       var val = metric === "total" ? s.total : (s.items[metric] || 0);
       buckets[key].sum += val;
       buckets[key].count += 1;
     });
-    return order.map(function (key) {
+    return Object.keys(buckets).sort().map(function (key) {
       var b = buckets[key];
       return { label: bucketLabelOf(key, granularity), value: Math.round(b.sum / b.count) };
     });
@@ -835,7 +843,7 @@
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
   function renderSessionChart(points, seriesLabel) {
-    var w = 720, h = 400, padL = 44, padR = 20, padT = 68, padB = 40;
+    var w = 720, h = 420, padL = 54, padR = 20, padT = 68, padB = 46;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
 
@@ -845,7 +853,7 @@
     var grid = [0, 25, 50, 75, 100].map(function (v) {
       return '<line x1="' + padL + '" y1="' + yAt(v) + '" x2="' + (w - padR) + '" y2="' + yAt(v) +
         '" stroke="var(--line)" stroke-width="1"/>' +
-        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 5) + '" font-size="14" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
+        '<text x="' + (padL - 10) + '" y="' + (yAt(v) + 6) + '" font-size="18" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
     }).join("");
 
     var linePoints = points.map(function (p, i) { return xAt(i) + "," + yAt(p.value); }).join(" ");
@@ -866,7 +874,7 @@
     var everyNth = Math.max(1, Math.ceil(n / 12));
     var xLabels = points.map(function (p, i) {
       if (i !== 0 && i !== n - 1 && i % everyNth !== 0) return "";
-      return '<text x="' + xAt(i) + '" y="' + (h - 12) + '" font-size="13" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
+      return '<text x="' + xAt(i) + '" y="' + (h - 14) + '" font-size="16" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
     }).join("");
 
     sessionChartWrapEl.innerHTML =
