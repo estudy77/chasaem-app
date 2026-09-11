@@ -146,6 +146,54 @@
     margin-bottom:24px;
   }
 
+  .roster-search{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .roster-search input{
+    flex:1;
+    font:inherit;
+    font-size:14px;
+    color:var(--ink);
+    background:var(--surface-2);
+    border:1px solid var(--line-strong);
+    border-radius:9px;
+    padding:8px 12px;
+  }
+  .roster-search input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .roster-count{
+    font-size:12.5px;
+    color:var(--ink-muted);
+    white-space:nowrap;
+  }
+
+  .pagination{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:6px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .page-btn{
+    font:inherit;
+    font-size:13px;
+    font-weight:600;
+    min-width:32px;
+    padding:6px 8px;
+    color:var(--ink-2);
+    background:var(--surface);
+    border:1px solid var(--line-strong);
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .page-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .page-btn.is-active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .page-btn:disabled{ opacity:0.4; cursor:default; }
+  .page-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
   .table-scroll{ overflow-x:auto; }
 
   .roster-table, .history-table{

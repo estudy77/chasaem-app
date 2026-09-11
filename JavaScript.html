@@ -27,6 +27,13 @@
   var panels = { roster: document.getElementById("tabRoster"), sessions: document.getElementById("tabSessions") };
 
   var rosterBody = document.getElementById("rosterBody");
+  var rosterSearchEl = document.getElementById("rosterSearch");
+  var rosterCountEl = document.getElementById("rosterCount");
+  var rosterPaginationEl = document.getElementById("rosterPagination");
+  var rosterAllRows = [];
+  var rosterPage = 1;
+  var ROSTER_PAGE_SIZE = 5;
+
   var newStudentName = document.getElementById("newStudentName");
   var newStudentContact = document.getElementById("newStudentContact");
   var newStudentDate = document.getElementById("newStudentDate");
@@ -115,15 +122,64 @@
 
   function refreshRoster() {
     google.script.run
-      .withSuccessHandler(renderRoster)
+      .withSuccessHandler(function (rows) {
+        rosterAllRows = rows;
+        applyRosterView();
+      })
       .withFailureHandler(onError)
       .getStudentRoster();
   }
 
-  function renderRoster(rows) {
+  rosterSearchEl.addEventListener("input", function () {
+    rosterPage = 1;
+    applyRosterView();
+  });
+
+  // 검색어로 걸러서 5개씩 페이지로 나눠 보여준다 (수강생이 많아져도 표가 안 늘어지도록).
+  function applyRosterView() {
+    var term = rosterSearchEl.value.trim().toLowerCase();
+    var filtered = term
+      ? rosterAllRows.filter(function (r) { return (r.name || "").toLowerCase().indexOf(term) !== -1; })
+      : rosterAllRows;
+
+    var totalPages = Math.max(1, Math.ceil(filtered.length / ROSTER_PAGE_SIZE));
+    if (rosterPage > totalPages) rosterPage = totalPages;
+    if (rosterPage < 1) rosterPage = 1;
+
+    var start = (rosterPage - 1) * ROSTER_PAGE_SIZE;
+    var pageRows = filtered.slice(start, start + ROSTER_PAGE_SIZE);
+
+    rosterCountEl.textContent = rosterAllRows.length
+      ? "전체 " + rosterAllRows.length + "명" + (term ? " · 검색됨 " + filtered.length + "명" : "")
+      : "";
+
+    renderRoster(pageRows, filtered.length, term);
+    renderRosterPagination(totalPages);
+  }
+
+  function renderRosterPagination(totalPages) {
+    rosterPaginationEl.innerHTML = "";
+    if (totalPages <= 1) return;
+    for (var p = 1; p <= totalPages; p++) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "page-btn" + (p === rosterPage ? " is-active" : "");
+      btn.textContent = String(p);
+      btn.addEventListener("click", (function (page) {
+        return function () { rosterPage = page; applyRosterView(); };
+      })(p));
+      rosterPaginationEl.appendChild(btn);
+    }
+  }
+
+  function renderRoster(rows, filteredTotal, term) {
     rosterBody.innerHTML = "";
-    if (!rows.length) {
+    if (!rosterAllRows.length) {
       rosterBody.innerHTML = '<tr><td colspan="10" class="empty-row">등록된 수강생이 없어요. 위에서 추가해 보세요.</td></tr>';
+      return;
+    }
+    if (term && filteredTotal === 0) {
+      rosterBody.innerHTML = '<tr><td colspan="10" class="empty-row">"' + term + '" 검색 결과가 없어요.</td></tr>';
       return;
     }
     rows.forEach(function (r) {
