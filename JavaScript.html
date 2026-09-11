@@ -809,8 +809,8 @@
   var CHART_PERIOD_LABEL = { day: "최근 1일 · 회차별", week: "최근 7일 · 회차별", month: "이번 달 · 회차별" };
   var chartPeriodLabelEl = document.getElementById("chartPeriodLabel");
 
-  // 평균은 내지 않는다 - "일"은 가장 최근 체크된 하루, "주"는 최근 7일, "월"은 이번 달에
-  // 속한 회차만 골라서 각 회차 점수를 하나씩 그대로 점으로 그린다.
+  // "일"은 가장 최근 체크된 하루, "주"는 최근 7일, "월"은 이번 달의 범위를 고르고,
+  // 그 범위 안에서 같은 날짜에 회차가 여러 개면 하루 단위로 평균 내서 하루에 점 하나로 보여준다.
   function updateChart() {
     chartPeriodLabelEl.textContent = CHART_PERIOD_LABEL[chartGranularity];
     if (!historyAllSessions.length) {
@@ -821,10 +821,7 @@
     var scoped = chartGranularity === "day" ? latestPeriodSessions(chrono, "day")
       : chartGranularity === "week" ? lastNDaysSessions(chrono, 7)
       : latestPeriodSessions(chrono, "month");
-    var points = scoped.map(function (s) {
-      var val = chartMetric === "total" ? s.total : (s.items[chartMetric] || 0);
-      return { label: bucketLabelOf(s.date), value: val };
-    });
+    var points = groupByDayAverage(scoped, chartMetric);
     renderSessionChart(points, metricLabel(chartMetric));
   }
 
@@ -833,6 +830,21 @@
     var last = chrono[chrono.length - 1];
     var periodKey = bucketKeyOf(last.date, granularity);
     return chrono.filter(function (s) { return bucketKeyOf(s.date, granularity) === periodKey; });
+  }
+
+  // 같은 날짜에 회차가 여러 개면 평균을 내서, 날짜 하나당 점 하나만 만든다.
+  function groupByDayAverage(sessions, metric) {
+    var buckets = {};
+    sessions.forEach(function (s) {
+      if (!buckets[s.date]) buckets[s.date] = { sum: 0, count: 0 };
+      var val = metric === "total" ? s.total : (s.items[metric] || 0);
+      buckets[s.date].sum += val;
+      buckets[s.date].count += 1;
+    });
+    return Object.keys(buckets).sort().map(function (date) {
+      var b = buckets[date];
+      return { label: bucketLabelOf(date), value: Math.round(b.sum / b.count) };
+    });
   }
 
   // 가장 최근 회차 날짜로부터 최근 N일(오늘 포함) 안에 속하는 회차만 골라낸다.
@@ -855,7 +867,7 @@
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
     // 점이 많아질수록(월별 회차가 많을 때) 숫자 크기를 줄여서 서로 겹치지 않게 한다.
-    var valueFontSize = n > 10 ? Math.max(16, 34 - (n - 10) * 1.6) : 34;
+    var valueFontSize = n > 10 ? Math.max(14, 24 - (n - 10) * 1.2) : 24;
 
     function xAt(i) { return padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW); }
     function yAt(v) { return padT + plotH - (v / 100) * plotH; }
