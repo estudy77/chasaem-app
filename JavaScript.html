@@ -851,7 +851,7 @@
   // viewBox 자체를 좁게 잡아서(480), 화면 폭이 좁은 모바일에서도 글자가 실제로 크게 렌더링되게 한다
   // (SVG는 폭 100%로 늘어나므로, viewBox가 좁을수록 같은 font-size 숫자가 더 크게 보인다).
   function renderSessionChart(points, seriesLabel) {
-    var w = 480, h = 300, padL = 40, padR = 16, padT = 46, padB = 34;
+    var w = 480, h = 320, padL = 48, padR = 16, padT = 46, padB = 40;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
     // 점이 많아질수록(월별 회차가 많을 때) 숫자 크기를 줄여서 서로 겹치지 않게 한다.
@@ -863,7 +863,7 @@
     var grid = [0, 25, 50, 75, 100].map(function (v) {
       return '<line x1="' + padL + '" y1="' + yAt(v) + '" x2="' + (w - padR) + '" y2="' + yAt(v) +
         '" stroke="var(--line)" stroke-width="1"/>' +
-        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 5) + '" font-size="15" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
+        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 7) + '" font-size="21" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
     }).join("");
 
     var linePoints = points.map(function (p, i) { return xAt(i) + "," + yAt(p.value); }).join(" ");
@@ -884,7 +884,7 @@
     var everyNth = Math.max(1, Math.ceil(n / 10));
     var xLabels = points.map(function (p, i) {
       if (i !== 0 && i !== n - 1 && i % everyNth !== 0) return "";
-      return '<text x="' + xAt(i) + '" y="' + (h - 10) + '" font-size="13" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
+      return '<text x="' + xAt(i) + '" y="' + (h - 12) + '" font-size="18" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
     }).join("");
 
     sessionChartWrapEl.innerHTML =
