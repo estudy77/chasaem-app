@@ -831,14 +831,31 @@
     });
   }
 
+  var CHART_PERIOD_LABEL = { day: "전체 회차", week: "최근 1주 · 회차별", month: "월별 평균" };
+  var chartPeriodLabelEl = document.getElementById("chartPeriodLabel");
+
   function updateChart() {
+    chartPeriodLabelEl.textContent = CHART_PERIOD_LABEL[chartGranularity];
     if (!historyAllSessions.length) {
       sessionChartWrapEl.innerHTML = '<p class="chart-empty">아직 그래프로 보여줄 회차 기록이 없어요.</p>';
       return;
     }
     var chrono = historyAllSessions.slice().reverse(); // historyAllSessions는 최신이 먼저라, 그래프는 시간순(왼쪽->오른쪽)으로 그린다
-    var points = aggregateForChart(chrono, chartGranularity, chartMetric);
+    var points = chartGranularity === "week"
+      ? latestWeekPoints(chrono, chartMetric)   // 주 단위는 평균 내지 않고, 최근 1주 안의 회차를 하나씩 그대로 보여준다
+      : aggregateForChart(chrono, chartGranularity, chartMetric); // 일/월은 구간별 평균
     renderSessionChart(points, metricLabel(chartMetric));
+  }
+
+  // 가장 최근 회차가 속한 주(월~일)의 회차들을, 평균 내지 않고 하나씩 그대로 점으로 그린다.
+  function latestWeekPoints(chrono, metric) {
+    var last = chrono[chrono.length - 1];
+    var weekKey = bucketKeyOf(last.date, "week");
+    var matches = chrono.filter(function (s) { return bucketKeyOf(s.date, "week") === weekKey; });
+    return matches.map(function (s) {
+      var val = metric === "total" ? s.total : (s.items[metric] || 0);
+      return { label: bucketLabelOf(s.date, "day"), value: val };
+    });
   }
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
