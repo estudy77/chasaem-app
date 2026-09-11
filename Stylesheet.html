@@ -693,16 +693,18 @@
 
   .chart-student-picker{
     display:flex;
-    gap:8px;
+    gap:6px;
     margin-top:10px;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
   }
   .chart-student-picker .student-search{
-    flex:0 0 110px;
+    flex:1 1 0;
+    min-width:0;
     margin-bottom:0;
   }
   .chart-student-picker select{
-    flex:1 1 140px;
+    flex:1 1 0;
+    min-width:0;
     font:inherit;
     font-size:13px;
     font-weight:600;
@@ -710,7 +712,7 @@
     background:var(--surface-2);
     border:1px solid var(--line-strong);
     border-radius:8px;
-    padding:6px 8px;
+    padding:6px 6px;
   }
   .chart-student-picker select:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
 
