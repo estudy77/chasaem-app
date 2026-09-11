@@ -166,8 +166,20 @@
     <section id="tabChart" class="tab-panel" hidden>
       <div class="group">
         <div class="group-head">
-          <div class="group-title">회차별 종합점수 추이<span class="session-no-line" id="chartStudentName"></span></div>
+          <div class="group-title">회차별 그래프<span class="session-no-line" id="chartStudentName"></span></div>
         </div>
+
+        <div class="chart-controls">
+          <div class="chart-granularity" id="chartGranularity">
+            <button type="button" class="gran-btn is-active" data-gran="day">일</button>
+            <button type="button" class="gran-btn" data-gran="week">주</button>
+            <button type="button" class="gran-btn" data-gran="month">월</button>
+          </div>
+          <select id="chartMetricSelect">
+            <option value="total">종합점수</option>
+          </select>
+        </div>
+
         <div id="sessionChartWrap" class="chart-wrap">불러오는 중…</div>
       </div>
     </section>
