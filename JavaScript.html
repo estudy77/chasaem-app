@@ -848,10 +848,14 @@
   }
 
   // 집계된 {label, value} 목록을 가벼운 SVG 선 그래프로 그린다.
+  // viewBox 자체를 좁게 잡아서(480), 화면 폭이 좁은 모바일에서도 글자가 실제로 크게 렌더링되게 한다
+  // (SVG는 폭 100%로 늘어나므로, viewBox가 좁을수록 같은 font-size 숫자가 더 크게 보인다).
   function renderSessionChart(points, seriesLabel) {
-    var w = 720, h = 420, padL = 54, padR = 20, padT = 68, padB = 46;
+    var w = 480, h = 300, padL = 40, padR = 16, padT = 46, padB = 34;
     var plotW = w - padL - padR, plotH = h - padT - padB;
     var n = points.length;
+    // 점이 많아질수록(월별 회차가 많을 때) 숫자 크기를 줄여서 서로 겹치지 않게 한다.
+    var valueFontSize = n > 10 ? Math.max(16, 34 - (n - 10) * 1.6) : 34;
 
     function xAt(i) { return padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW); }
     function yAt(v) { return padT + plotH - (v / 100) * plotH; }
@@ -859,28 +863,28 @@
     var grid = [0, 25, 50, 75, 100].map(function (v) {
       return '<line x1="' + padL + '" y1="' + yAt(v) + '" x2="' + (w - padR) + '" y2="' + yAt(v) +
         '" stroke="var(--line)" stroke-width="1"/>' +
-        '<text x="' + (padL - 10) + '" y="' + (yAt(v) + 6) + '" font-size="18" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
+        '<text x="' + (padL - 8) + '" y="' + (yAt(v) + 5) + '" font-size="15" fill="var(--ink-muted)" text-anchor="end">' + v + '</text>';
     }).join("");
 
     var linePoints = points.map(function (p, i) { return xAt(i) + "," + yAt(p.value); }).join(" ");
     var areaPoints = xAt(0) + "," + yAt(0) + " " + linePoints + " " + xAt(n - 1) + "," + yAt(0);
 
     var dots = points.map(function (p, i) {
-      return '<circle cx="' + xAt(i) + '" cy="' + yAt(p.value) + '" r="7" fill="' + tierColor(p.value) +
-        '" stroke="var(--surface)" stroke-width="2.5"/>';
+      return '<circle cx="' + xAt(i) + '" cy="' + yAt(p.value) + '" r="6" fill="' + tierColor(p.value) +
+        '" stroke="var(--surface)" stroke-width="2"/>';
     }).join("");
 
     // 각 점 위에 실제 점수를 직접 크게 써준다 (0/100처럼 위쪽 공간이 부족한 값은 점 아래로 내려서 표시)
     var valueLabels = points.map(function (p, i) {
       var above = p.value < 88;
-      var ly = above ? yAt(p.value) - 22 : yAt(p.value) + 40;
-      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="30" font-weight="800" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
+      var ly = above ? yAt(p.value) - valueFontSize * 0.6 : yAt(p.value) + valueFontSize * 1.1;
+      return '<text x="' + xAt(i) + '" y="' + ly + '" font-size="' + valueFontSize + '" font-weight="800" fill="var(--ink)" text-anchor="middle">' + p.value + '</text>';
     }).join("");
 
-    var everyNth = Math.max(1, Math.ceil(n / 12));
+    var everyNth = Math.max(1, Math.ceil(n / 10));
     var xLabels = points.map(function (p, i) {
       if (i !== 0 && i !== n - 1 && i % everyNth !== 0) return "";
-      return '<text x="' + xAt(i) + '" y="' + (h - 14) + '" font-size="16" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
+      return '<text x="' + xAt(i) + '" y="' + (h - 10) + '" font-size="13" fill="var(--ink-muted)" text-anchor="middle">' + p.label + '</text>';
     }).join("");
 
     sessionChartWrapEl.innerHTML =
