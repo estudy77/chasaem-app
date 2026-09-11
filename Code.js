@@ -125,6 +125,14 @@ function ensureSetup_() {
   if (!ss.getSheetByName(SHEET_STUDENTS) || !ss.getSheetByName(SHEET_SESSIONS)) {
     setup();
   }
+  ensureContactColumnIsText_(getSheet_(SHEET_STUDENTS, STUDENTS_HEADERS));
+}
+
+// 연락처 칸을 항상 "일반 텍스트" 서식으로 고정한다.
+// 그냥 두면 010으로 시작하는 번호를 숫자로 인식해 앞자리 0을 지워버리기 때문.
+function ensureContactColumnIsText_(studentsSheet) {
+  var col = STUDENTS_HEADERS.indexOf('Contact') + 1;
+  studentsSheet.getRange(2, col, 1999, 1).setNumberFormat('@');
 }
 
 /* ---------------------------------------------------------------------- */
