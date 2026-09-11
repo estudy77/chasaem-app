@@ -25,7 +25,11 @@
   var editingSessionId = null;
 
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
-  var panels = { roster: document.getElementById("tabRoster"), sessions: document.getElementById("tabSessions") };
+  var panels = {
+    roster: document.getElementById("tabRoster"),
+    sessions: document.getElementById("tabSessions"),
+    chart: document.getElementById("tabChart")
+  };
 
   var rosterBody = document.getElementById("rosterBody");
   var rosterSearchEl = document.getElementById("rosterSearch");
@@ -378,6 +382,7 @@
   function onSummary(summary) {
     currentSummary = summary;
 
+    document.getElementById("chartStudentName").textContent = summary.student.name;
     document.getElementById("reportAvg").textContent = summary.hasSessions ? summary.overall + "점" : "-";
     document.getElementById("reportPrev").textContent = summary.prevScore == null ? "-" : summary.prevScore + "점";
     document.getElementById("reportLevel").textContent = summary.level;
